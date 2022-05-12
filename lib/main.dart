@@ -735,6 +735,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       onConnect: (status) {
         // Status is updated, but session.peerinfo is not yet available.
         logger.d('WalletConnect - Connected session. $status');
+        setState(() {
+          statusMessage = 'WalletConnect session established.';
+        });
 
         // Did the user select a new chain?
         if (chainId != status.chainId) {
@@ -790,8 +793,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Future<void> createWalletConnectSession(BuildContext context) async {
     // Create a new session
     if (walletConnect.connected) {
+      statusMessage =
+          'Already connected to ${walletConnect.session.peerMeta?.name} \n${walletConnect.session.peerMeta?.description}\n${walletConnect.session.peerMeta?.url}';
       logger.d(
-          'createWalletConnectSession - WalletConnect Already connected minter: $minter, chainId $chainId. Ignored.');
+          'createWalletConnectSession - WalletConnect Already connected to ${walletConnect.session.peerMeta?.name} with minter: $minter, chainId $chainId. Ignored.');
       return;
     }
 
@@ -842,6 +847,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   logger.e('Could not launch $uri');
                 }
               }
+              if (result) {
+                setState(() {
+                  statusMessage = 'Launched wallet app, requesting session.';
+                });
+              }
             } on PlatformException catch (e) {
               if (e.code == 'ACTIVITY_NOT_FOUND') {
                 logger.w('No wallets available - do nothing!');
@@ -859,10 +869,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           });
     } catch (e) {
       logger.e('Unable to connect - killing the session on our side.');
+      statusMessage = 'Unable to connect - killing the session on our side.';
       walletConnect.killSession();
       return;
     }
     if (session.accounts.isEmpty) {
+      statusMessage = 'Failed to connect to wallet.  Bridge Overloaded? Could not Connect?';
+
       // wc:f54c5bca-7712-4187-908c-9a92aa70d8db@1?bridge=https%3A%2F%2Fz.bridge.walletconnect.org&key=155ca05ffc2ab197772a5bd56a5686728f9fcc2b6eee5ffcb6fd07e46337888c
       logger.e('Failed to connect to wallet.  Bridge Overloaded? Could not Connect?');
     }
@@ -985,6 +998,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               ElevatedButton(
                 onPressed: () {
                   createWalletConnectSession(context);
+                  // statusMessage may be updated
+                  setState(() {});
                 },
                 child: const Text('Connect Wallet'),
               ),
@@ -993,6 +1008,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   if (walletConnect.connected) {
                     logger.d('Killing session');
                     walletConnect.killSession();
+                    setState(() {
+                      statusMessage = 'Wallet Disconnected';
+                    });
                   }
                 },
                 child: const Text('Disconnect Wallet'),
