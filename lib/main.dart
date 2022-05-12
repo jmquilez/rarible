@@ -90,9 +90,10 @@ class SimpleLogPrinter extends LogPrinter {
   SimpleLogPrinter(this.className);
   @override
   List<String> log(LogEvent event) {
+    DateTime dateTime = DateTime.now();
     //var color = PrettyPrinter.levelColors[event.level];
     var emoji = PrettyPrinter.levelEmojis[event.level];
-    return ['$emoji $className - ${event.message}'];
+    return ['${dateTime.toUtc()} $emoji $className - ${event.message}'];
     //println(color('$emoji $className - ${event.message}'));
   }
 }
@@ -210,6 +211,8 @@ Future<String> getNextTokenId({required String minter}) async {
   stopwatch.stop();
   logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
 
+  stopwatch.reset();
+  stopwatch.start();
   try {
     var response = await client.get(
       Uri.https(apiUri.host.toString(), apiUri.path.toString(), {'minter': minter}),
@@ -217,6 +220,8 @@ Future<String> getNextTokenId({required String minter}) async {
         'Content-Type': 'application/json',
       },
     );
+    stopwatch.stop();
+    logger.i('${stopwatch.elapsedMilliseconds}ms for API $apiUri');
     if (response.statusCode == 200) {
       var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
       // logger.d('200 ok: $decodedResponse');
@@ -409,10 +414,10 @@ Future<String> signTypedDataWithWalletConnect(
         .d('Launching configured wallet ${walletListing.name} using universal link ${walletListing.mobile.universal}');
     walletConnectUri = walletListing.mobile.universal + '/wc?uri=${Uri.encodeComponent(walletConnectTopicVersion)}';
   }
-  bool result = await launch(walletConnectUri, universalLinksOnly: false, forceSafariVC: false);
+  bool result = await launchUrl(Uri.parse(walletConnectUri), mode: LaunchMode.externalApplication);
   if (result == false) {
     // Application specific link didn't work, so we may redirect to the app store to get a wallet
-    result = await launch(walletConnectUri, forceSafariVC: true);
+    result = await launchUrl(Uri.parse(walletConnectUri));
     if (result == false) {
       logger.e('Could not launch $walletConnectUri');
     }
@@ -545,6 +550,8 @@ Future<bool> lazyMintExample({
   logger.d('$multichainBaseUrl/v0.1/items/$multichainBlockchain:$collection:$tokenId');
   logger.d('$multichainBaseUrl/v0.1/ownerships/byItem?itemId=$multichainBlockchain:$collection:$tokenId');
 
+  validateLazyMint(collection: collection, tokenId: tokenId);
+
   // We are good unless there was an error message
   return (!mintStatus.contains('Error'));
 }
@@ -553,11 +560,62 @@ Future<bool> lazyMintExample({
 ///
 /// Check the NFT has completed processing and the metadata is visible
 /// Verify the NFT is not for sale ( See https://github.com/rarible/protocol/issues/338 )
-///
+/// https://multichain.redoc.ly/v0.1#operation/getItemById
 /// TODO:
 /// https://api-staging.rarible.org/v0.1/items/ETHEREUM:0xf565108F208136B1AffD55d19A6236b6b6b9786D:57821959090642343791910250240090585543967286493013648175904625818401167638831
-Future<void> validateLazyMint({required String collection, required String tokenId, required String minter}) async {
-  logger.d('$multichainBaseUrl/v0.1/ownerships/byItem?itemId=$multichainBlockchain:$collection:$tokenId');
+Future<String> validateLazyMint({required String collection, required String tokenId, String? minter}) async {
+  Stopwatch stopwatch = Stopwatch();
+
+  String apiUrl = '$multichainBaseUrl/v0.1/items/$multichainBlockchain:$collection:$tokenId';
+  logger.d('Reading item details back from Rarible.  apiUrl: $apiUrl');
+
+  var client = http.Client();
+  final apiUri = Uri.parse(apiUrl);
+  final hostname = apiUri.host;
+
+  stopwatch.start();
+  final ipAddress = await InternetAddress.lookup(hostname);
+  stopwatch.stop();
+  logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
+  Map<String, dynamic>? meta = null;
+
+  stopwatch.reset();
+  stopwatch.start();
+  try {
+    var response = await client.get(
+      Uri.https(apiUri.host.toString(), apiUri.path.toString()),
+    );
+    stopwatch.stop();
+    logger.i('${stopwatch.elapsedMilliseconds}ms for API $apiUri');
+    if (response.statusCode == 200) {
+      var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
+      //logger.d('200 ok: $decodedResponse');
+
+      if (decodedResponse.keys.contains('meta')) {
+        logger.d('Metadata entry exists!');
+        meta = decodedResponse['meta'];
+      } else {
+        logger.e('200 ok, but missing "meta" entry: $decodedResponse');
+      }
+    } else {
+      var decodedResponse = jsonDecode(response.body);
+      logger.e('response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
+      return 'Error: ${response.statusCode}:${response.reasonPhrase} - ${decodedResponse['message']}.';
+    }
+  } on SocketException {
+    logger.e('SocketException');
+    return 'Error: We are unable to initiate communicate with our backend. (SocketException).';
+  } on TimeoutException {
+    logger.e('TimeoutException');
+    return 'Error: Our rarible servers are taking too long to respond. (TimeoutException).';
+  } catch (e) {
+    logger.e('Error: Ok, we were not expecting this error: $e');
+  } finally {
+    client.close();
+  }
+  return (meta != null) ? 'Pass: Metadata exists' : 'Fail: No Metadata';
+  // working case  {"id":"ETHEREUM:0x6ede7f3c26975aad32a475e1021d8f6f39c89d82:51853873187524799243313032258623492611584136611923237689466576623960428904598","blockchain":"ETHEREUM","collection":"ETHEREUM:0x6ede7f3c26975aad32a475e1021d8f6f39c89d82","contract":"ETHEREUM:0x6ede7f3c26975aad32a475e1021d8f6f39c89d82","tokenId":"51853873187524799243313032258623492611584136611923237689466576623960428904598","creators":[{"account":"ETHEREUM:0x72a4408da42de870499c1841d0e4a49f864e34ba","value":10000}],"owners":[],"royalties":[],"lazySupply":"0","pending":[],"mintedAt":"2022-04-17T20:51:55.676Z","lastUpdatedAt":"2022-04-14T21:53:25.172Z","supply":"0","meta":{"name":"Buffalo4","description":"It's actually a bison?","attributes":[{"key":"BackgroundColor","value":"bluegreen\n"},{"key":"Eyes","value":"googly"}],"content":[{"@type":"IMAGE","url":"https://austingriffith.com/images/paintings/buffalo.jpg","representation":"ORIGINAL","mimeType":"image/jpeg","size":44104,"width":604,"height":480}],"restrictions":[]},"deleted":true,"auctions":[],"totalStock":"0","sellers":0}0
+  // metadata fail {"id":"ETHEREUM:0x6ede7f3c26975aad32a475e1021d8f6f39c89d82:51853873187524799243313032258623492611584136611923237689466576623960428905332","blockchain":"ETHEREUM","collection":"ETHEREUM:0x6ede7f3c26975aad32a475e1021d8f6f39c89d82","contract":"ETHEREUM:0x6ede7f3c26975aad32a475e1021d8f6f39c89d82","tokenId":"51853873187524799243313032258623492611584136611923237689466576623960428905332","creators":[{"account":"ETHEREUM:0x72a4408da42de870499c1841d0e4a49f864e34ba","value":10000}],"owners":[],"royalties":[],"lazySupply":"1","pending":[],"mintedAt":"2022-04-17T21:05:43.527Z","lastUpdatedAt":"2022-04-17T20:40:48.770Z","supply":"1","deleted":false,"auctions":[],"totalStock":"0","sellers":0}
 }
 
 /// Delete Lazy Minted Item
@@ -600,12 +658,16 @@ Future<String> lazyDelete({required String collection, required String tokenId, 
   stopwatch.stop();
   logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
 
+  stopwatch.reset();
+  stopwatch.start();
   try {
     var response = await client.post(Uri.https(apiUri.host.toString(), apiUri.path.toString()),
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode(lazyDeleteForm));
+    stopwatch.stop();
+    logger.i('${stopwatch.elapsedMilliseconds}ms for API $apiUri');
     log(response.body);
     if (response.statusCode == 204) {
       logger.d('successful delete. status code: ${response.statusCode}');
@@ -625,7 +687,7 @@ Future<String> lazyDelete({required String collection, required String tokenId, 
   } finally {
     client.close();
   }
-  return tokenId;
+  return 'TODO';
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
@@ -671,7 +733,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     walletConnect.registerListeners(
       onConnect: (status) {
-        // What information is available?
+        // Status is updated, but session.peerinfo is not yet available.
         logger.d('WalletConnect - Connected session. $status');
 
         // Did the user select a new chain?
@@ -771,11 +833,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
             logger.d('launching uri: $uri');
             try {
-              result = await launch(uri, universalLinksOnly: true, forceSafariVC: false);
+              result = await launchUrl(Uri.parse(uri), mode: LaunchMode.externalApplication);
               if (result == false) {
                 // launch alternative method
                 logger.e('Initial launchuri failed. Fallback launch with forceSafariVC true');
-                result = await launch(uri, forceSafariVC: true);
+                result = await launchUrl(Uri.parse(uri));
                 if (result == false) {
                   logger.e('Could not launch $uri');
                 }
@@ -869,11 +931,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                       case 'rinkeby':
                         blockchainFlavor = BlockchainFlavor.rinkeby;
                         break;
-                      case 'net':
+                      case 'ethMainNet':
                         blockchainFlavor = BlockchainFlavor.ethMainNet;
                         break;
                       case 'mumbai':
                         blockchainFlavor = BlockchainFlavor.mumbai;
+                        break;
+                      case 'polygonMainNet':
+                        blockchainFlavor = BlockchainFlavor.polygonMainNet;
                         break;
                     }
                     await init(blockchain: blockchainFlavor, preserveMinterAddress: true);
@@ -983,7 +1048,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     // TokenId's are big ints... but this is easier
                     if (nftStoreUri != null) {
                       logger.d('Launching uri: $nftStoreUri');
-                      launch(nftStoreUri!);
+                      launchUrl(Uri.parse(nftStoreUri!));
                     }
                   },
                   child: const Text('Store Link'))

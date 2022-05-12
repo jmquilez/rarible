@@ -55,6 +55,7 @@ Map<BlockchainFlavor, String> assetContractErc721Map = {
   BlockchainFlavor.rinkeby: '0x6ede7f3c26975aad32a475e1021d8f6f39c89d82',
   BlockchainFlavor.ethMainNet: '0xF6793dA657495ffeFF9Ee6350824910Abc21356C',
   BlockchainFlavor.mumbai: '0x5A3Ed919C18137dcC67fBEA707d7E41F3E498BEF',
+  BlockchainFlavor.polygonMainNet: '0x5A3Ed919C18137dcC67fBEA707d7E41F3E498BEF',
   //BlockchainFlavor.mumbai: '0x9f546C5a90E7C878dF91622D6EB43D8fb1Ef4b1C',
 };
 
