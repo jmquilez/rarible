@@ -734,15 +734,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     walletConnect.registerListeners(
       onConnect: (status) {
         // Status is updated, but session.peerinfo is not yet available.
-        logger.d('WalletConnect - Connected session. $status');
+        logger.d(
+            'WalletConnect - onConnect - Established connection with  Wallet app: ${walletConnect.session.peerMeta?.name} -${walletConnect.session.peerMeta?.description}');
+
         setState(() {
-          statusMessage = 'WalletConnect session established.';
+          statusMessage =
+              'WalletConnect session established with ${walletConnect.session.peerMeta?.name} - ${walletConnect.session.peerMeta?.description}.';
         });
 
         // Did the user select a new chain?
         if (chainId != status.chainId) {
-          logger
-              .d('WalletConnect - onConnect. Selected blockchain has changed: chainId: $chainId <- ${status.chainId})');
+          logger.d(
+              'WalletConnect - onConnect - Selected blockchain has changed: chainId: $chainId <- ${status.chainId})');
           setState(() {
             chainId = status.chainId;
             blockchainFlavor = BlockchainFlavorExtention.fromChainId(chainId);
@@ -751,7 +754,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
         // Did the user select a new wallet address?
         if (minter != status.accounts[0]) {
-          logger.d('WalletConnect - onConnect. Selected wallet has changed: minter: $minter <- ${status.accounts[0]}');
+          logger.d('WalletConnect - onConnect - Selected wallet has changed: minter: $minter <- ${status.accounts[0]}');
           setState(() {
             minter = status.accounts[0];
           });
@@ -761,10 +764,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         // What information is available?
         //print('WalletConnect - Updated session. $status');
 
+        logger.d(
+            'WalletConnect - onSessionUpdate - Wallet ${walletConnect.session.peerMeta?.name} - ${walletConnect.session.peerMeta?.description}');
+
+        setState(() {
+          statusMessage =
+              'WalletConnect - SessionUpdate received with chainId ${status.chainId} and account ${status.accounts[0]}.';
+        });
+
         // Did the user select a new chain?
         if (chainId != status.chainId) {
           logger.d(
-              'WalletConnect - onSessionUpdate. Selected blockchain has changed: chainId: $chainId <- ${status.chainId}');
+              'WalletConnect - onSessionUpdate - Selected blockchain has changed: chainId: $chainId <- ${status.chainId}');
           setState(() {
             chainId = status.chainId;
             blockchainFlavor = BlockchainFlavorExtention.fromChainId(chainId);
@@ -774,16 +785,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         // Did the user select a new wallet address?
         if (minter != status.accounts[0]) {
           logger.d(
-              'WalletConnect - onSessionUpdate. Selected wallet has changed: minter: $minter <- ${status.accounts[0]}');
+              'WalletConnect - onSessionUpdate - Selected wallet has changed: minter: $minter <- ${status.accounts[0]}');
           setState(() {
             minter = status.accounts[0];
           });
         }
       },
       onDisconnect: () async {
-        logger.d('WalletConnect - onDisconnect. minter: $minter <- "Please Connect Wallet"');
+        logger.d('WalletConnect - onDisconnect - minter: $minter <- "Please Connect Wallet"');
         setState(() {
           minter = 'Please Connect Wallet';
+          statusMessage = 'WalletConnect session disconnected.';
         });
         await initWalletConnect();
       },
