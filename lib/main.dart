@@ -27,7 +27,8 @@ import 'package:walletconnect_secure_storage/walletconnect_secure_storage.dart';
 // e.g. --dart-define=MINTER_ADDRESS=SOME_VALUE --dart-define=MINTER_PRIVATE_KEY=OTHER_VALUE
 class EnvironmentConfig {
   static const kExampleMinterAddress = String.fromEnvironment('MINTER_ADDRESS');
-  static const kExampleMinterPrivateKey = String.fromEnvironment('MINTER_PRIVATE_KEY');
+  static const kExampleMinterPrivateKey =
+      String.fromEnvironment('MINTER_PRIVATE_KEY');
 }
 
 // The documents and API should avoid using high level terms such as 'contract' and 'uri' which are super ambiguous.
@@ -101,15 +102,21 @@ class SimpleLogPrinter extends LogPrinter {
 /// Initialize Global Settings based on blockchain selected
 ///
 /// [blockchain] User selected blockchain
-Future<void> init({BlockchainFlavor blockchain = BlockchainFlavor.rinkeby, bool preserveMinterAddress = false}) async {
+Future<void> init(
+    {BlockchainFlavor blockchain = BlockchainFlavor.rinkeby,
+    bool preserveMinterAddress = false}) async {
   blockchainFlavor = blockchain;
   basePath = basePathMap[blockchain] ?? '';
   chainId = chainIdMap[blockchain] ?? 0;
-  collection = assetContractErc721Map[blockchain] ?? ''; // rarible.com default contract addresses
-  multichainBaseUrl =
-      ({BlockchainFlavor.rinkeby, BlockchainFlavor.ropsten, BlockchainFlavor.mumbai}.contains(blockchain))
-          ? 'https://api-staging.rarible.org'
-          : 'https://api.rarible.org';
+  collection = assetContractErc721Map[blockchain] ??
+      ''; // rarible.com default contract addresses
+  multichainBaseUrl = ({
+    BlockchainFlavor.rinkeby,
+    BlockchainFlavor.ropsten,
+    BlockchainFlavor.mumbai
+  }.contains(blockchain))
+      ? 'https://api-staging.rarible.org'
+      : 'https://api.rarible.org';
   multichainBlockchain = multiChainBlockchainMap[blockchain] ?? '';
 
   // WalletConnect may have provided a updated minter address
@@ -120,13 +127,17 @@ Future<void> init({BlockchainFlavor blockchain = BlockchainFlavor.rinkeby, bool 
   blockExplorer = blockExplorerMap[blockchain] ?? '';
   tokenId = 'Not Yet Requested\n\n';
 
-  logger.d('Initialized Rarible on ${describeEnum(blockchain)} (chain ID: $chainId) with API basePath $basePath');
-  logger.d('multichain baseUrl $multichainBaseUrl with blockchain $multichainBlockchain');
+  logger.d(
+      'Initialized Rarible on ${describeEnum(blockchain)} (chain ID: $chainId) with API basePath $basePath');
+  logger.d(
+      'multichain baseUrl $multichainBaseUrl with blockchain $multichainBlockchain');
   // Poylygon collections have an additional path
   if (basePath.contains('polygon')) {
-    logger.d('Collection Address: $collection - $raribleDotCom/collection/polygon/$collection}');
+    logger.d(
+        'Collection Address: $collection - $raribleDotCom/collection/polygon/$collection}');
   } else {
-    logger.d('Collection Address: $collection - $raribleDotCom/collection/$collection}');
+    logger.d(
+        'Collection Address: $collection - $raribleDotCom/collection/$collection}');
   }
   logger.d('Minter Wallet address: $minter - $blockExplorer/$minter');
   logger.d('Faucet URL: ${faucetMap[blockchain] ?? 'unknown'}');
@@ -137,7 +148,8 @@ Future<void> init({BlockchainFlavor blockchain = BlockchainFlavor.rinkeby, bool 
 ///
 /// Example code does not support multiple requests across pages.
 /// Registry API Documentation available here: https://docs.walletconnect.com/2.0/api/registry-api
-Future<List<WalletConnectRegistryListing>> readWalletRegistry({int limit = 4}) async {
+Future<List<WalletConnectRegistryListing>> readWalletRegistry(
+    {int limit = 4}) async {
   List<WalletConnectRegistryListing> listings = [];
 
   var client = http.Client();
@@ -163,7 +175,8 @@ Future<List<WalletConnectRegistryListing>> readWalletRegistry({int limit = 4}) a
 
     if (response.statusCode == 200) {
       //log(response.body);
-      var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>?;
+      var decodedResponse =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>?;
 
       if (decodedResponse != null && decodedResponse['listings'] != null) {
         // Present user with list of supported wallets (IOS)
@@ -175,7 +188,8 @@ Future<List<WalletConnectRegistryListing>> readWalletRegistry({int limit = 4}) a
       }
       return listings;
     } else {
-      logger.e('Unexpected server error: ${response.statusCode}: ${response.reasonPhrase}.');
+      logger.e(
+          'Unexpected server error: ${response.statusCode}: ${response.reasonPhrase}.');
     }
   } catch (e) {
     logger.e('Unexpected protocol error: $e');
@@ -199,7 +213,8 @@ void setWalletListing(WalletConnectRegistryListing listing) {
 ///  https://ethereum-api.rarible.org/v0.1/doc#operation/generateNftTokenId
 Future<String> getNextTokenId({required String minter}) async {
   Stopwatch stopwatch = Stopwatch();
-  String apiUrl = '${basePath}v0.1/nft/collections/$collection/generate_token_id';
+  String apiUrl =
+      '${basePath}v0.1/nft/collections/$collection/generate_token_id';
   logger.d('Requesting next token if from $apiUrl.');
 
   var client = http.Client();
@@ -209,13 +224,15 @@ Future<String> getNextTokenId({required String minter}) async {
   stopwatch.start();
   final ipAddress = await InternetAddress.lookup(hostname);
   stopwatch.stop();
-  logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
+  logger.i(
+      '${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
 
   stopwatch.reset();
   stopwatch.start();
   try {
     var response = await client.get(
-      Uri.https(apiUri.host.toString(), apiUri.path.toString(), {'minter': minter}),
+      Uri.https(
+          apiUri.host.toString(), apiUri.path.toString(), {'minter': minter}),
       headers: {
         'Content-Type': 'application/json',
       },
@@ -228,7 +245,8 @@ Future<String> getNextTokenId({required String minter}) async {
       tokenId = decodedResponse['tokenId'];
     } else {
       var decodedResponse = jsonDecode(response.body);
-      logger.e('response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
+      logger.e(
+          'response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
       return 'Error: ${response.statusCode}:${response.reasonPhrase} - ${decodedResponse['message']}.';
     }
   } on SocketException {
@@ -273,8 +291,10 @@ TypedMessage createMint721TypedMessage({
       "Mint721": [
         TypedDataField(name: "tokenId", type: "uint256"),
         TypedDataField(name: "tokenURI", type: "string"),
-        TypedDataField(name: "creators", type: "Part[]"), // This is an array[] of Part
-        TypedDataField(name: "royalties", type: "Part[]"), // This is an array[] of Part
+        TypedDataField(
+            name: "creators", type: "Part[]"), // This is an array[] of Part
+        TypedDataField(
+            name: "royalties", type: "Part[]"), // This is an array[] of Part
       ],
     },
     // This is the data that we will present to sign, a good UI will only show this
@@ -284,8 +304,10 @@ TypedMessage createMint721TypedMessage({
       // Details of the form and where to find the contract to verify it
       name: "Mint721",
       version: "1",
-      chainId: collectionChainId, //  must match the collection's chainId or the signature will not verify
-      verifyingContract: collectionAddress, // the lazy mint enabled ERC-721 contract address
+      chainId:
+          collectionChainId, //  must match the collection's chainId or the signature will not verify
+      verifyingContract:
+          collectionAddress, // the lazy mint enabled ERC-721 contract address
       salt: "0", // do better than this
     ),
     // The "WHAT" data we are asking to sign. This will later get the signature(s) appended to it.
@@ -313,7 +335,8 @@ Future<String?> requestLazyMint(Map<String, dynamic> message) async {
   stopwatch.start();
   final ipAddress = await InternetAddress.lookup(hostname);
   stopwatch.stop();
-  logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
+  logger.i(
+      '${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
   final statDnsLookup = stopwatch.elapsedMilliseconds;
 
   var client = http.Client();
@@ -327,13 +350,15 @@ Future<String?> requestLazyMint(Map<String, dynamic> message) async {
       body: jsonEncode(message),
     );
     stopwatch.stop();
-    logger.i('${stopwatch.elapsedMilliseconds - statDnsLookup}ms for API: $apiUrl ($ipAddress)');
+    logger.i(
+        '${stopwatch.elapsedMilliseconds - statDnsLookup}ms for API: $apiUrl ($ipAddress)');
     if (response.statusCode == 200) {
       var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
       logger.d('200 ok: $decodedResponse');
     } else {
       var decodedResponse = jsonDecode(response.body);
-      logger.e('response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
+      logger.e(
+          'response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
       return 'Error: ${response.statusCode}:${response.reasonPhrase} - ${decodedResponse['message']}.';
     }
   } on SocketException {
@@ -347,7 +372,8 @@ Future<String?> requestLazyMint(Map<String, dynamic> message) async {
   } finally {
     client.close();
   }
-  logger.i('getNftLazyItemById -> ${basePath}v0.1/nft/items/$collection:$tokenId/lazy');
+  logger.i(
+      'getNftLazyItemById -> ${basePath}v0.1/nft/items/$collection:$tokenId/lazy');
   return 'OK!';
 }
 
@@ -355,7 +381,8 @@ Future<String?> requestLazyMint(Map<String, dynamic> message) async {
 ///
 /// [privateKey] - Sensitive data you don't want to be keeping around
 /// [typedMessage] - TypedMessage that contains the message to sign
-String signTypedDataWithPrivateKey({required String privateKey, required TypedMessage typedMessage}) {
+String signTypedDataWithPrivateKey(
+    {required String privateKey, required TypedMessage typedMessage}) {
   String ethSigUtilSignature = '';
 
   try {
@@ -377,7 +404,8 @@ String signTypedDataWithPrivateKey({required String privateKey, required TypedMe
 ///
 /// [privateKey] - Sensitive data you don't want to be keeping around
 /// [typedMessage] - TypedMessage that contains the message to sign
-String personalSignWithPrivateKey({required String privateKey, required String message}) {
+String personalSignWithPrivateKey(
+    {required String privateKey, required String message}) {
   // Convert from message String to U8intList
   List<int> codeUnits = message.codeUnits;
   Uint8List messageBytes = Uint8List.fromList(codeUnits);
@@ -399,9 +427,12 @@ String personalSignWithPrivateKey({required String privateKey, required String m
 }
 
 Future<String> signTypedDataWithWalletConnect(
-    {required BuildContext context, required WalletConnect walletConnector, required TypedMessage typedMessage}) async {
+    {required BuildContext context,
+    required WalletConnect walletConnector,
+    required TypedMessage typedMessage}) async {
   // For signing requests for a connected wallet, only provide the existing session id and version number.
-  String walletConnectTopicVersion = 'wc:${walletConnect.session.handshakeTopic}@${walletConnect.session.version}';
+  String walletConnectTopicVersion =
+      'wc:${walletConnect.session.handshakeTopic}@${walletConnect.session.version}';
   String walletConnectUri = '';
   String walletConnectSignature = '';
 
@@ -410,11 +441,13 @@ Future<String> signTypedDataWithWalletConnect(
     walletConnectUri = walletConnectTopicVersion;
   } else {
     // IOS has selected a wallet listing from the WalletConnect Registry to use
-    logger
-        .d('Launching configured wallet ${walletListing.name} using universal link ${walletListing.mobile.universal}');
-    walletConnectUri = walletListing.mobile.universal + '/wc?uri=${Uri.encodeComponent(walletConnectTopicVersion)}';
+    logger.d(
+        'Launching configured wallet ${walletListing.name} using universal link ${walletListing.mobile.universal}');
+    walletConnectUri = walletListing.mobile.universal +
+        '/wc?uri=${Uri.encodeComponent(walletConnectTopicVersion)}';
   }
-  bool result = await launchUrl(Uri.parse(walletConnectUri), mode: LaunchMode.externalApplication);
+  bool result = await launchUrl(Uri.parse(walletConnectUri),
+      mode: LaunchMode.externalApplication);
   if (result == false) {
     // Application specific link didn't work, so we may redirect to the app store to get a wallet
     result = await launchUrl(Uri.parse(walletConnectUri));
@@ -455,19 +488,23 @@ Future<bool> lazyMintExample({
 }) async {
   // This is the json file that defines the NFT, hosted in IPFS
   // see https://docs.rarible.org/asset/creating-an-asset#creating-our-nfts-metadata
-  String uri = "/ipfs/QmVUzkLxEoCRyit8uXAuUoVUgFw1c7Uvz7T4bkGgJUwxcf"; // buffalo metadata
+  String uri =
+      "/ipfs/QmVUzkLxEoCRyit8uXAuUoVUgFw1c7Uvz7T4bkGgJUwxcf"; // buffalo metadata
 
   /// Get the next available token id
-  onProgress?.call('-> Requesting next available token ID for collection $collection using minter address $minter');
+  onProgress?.call(
+      '-> Requesting next available token ID for collection $collection using minter address $minter');
   tokenId = await getNextTokenId(minter: minter);
 
   //I/flutter (15000): tokenId = 51853873187524799243313032258623492611584136611923237689466576623960428904484 (0x72a4408da42de870499c1841d0e4a49f864e34ba000000000000000000000024)
   if (tokenId.length < 3) {
     logger.e('First 20 bytes of a tokenId needs to match our minter address.');
-    logger.e('* Was the collection contract address generated from a rarible TokenFactory?');
+    logger.e(
+        '* Was the collection contract address generated from a rarible TokenFactory?');
     logger.e(
         '* Is the collection contract address valid for this blockchain?  \n(${blockchainFlavor.name}) $blockExplorer/$collection');
-    logger.e('* Does the minter have permissions to create tokens on this collection?');
+    logger.e(
+        '* Does the minter have permissions to create tokens on this collection?');
     return false;
   }
   if (tokenId.startsWith('Error')) {
@@ -483,7 +520,8 @@ Future<bool> lazyMintExample({
       ':' +
       tokenId.toLowerCase();
 
-  onProgress?.call('tokenId = $tokenId (0x${BigInt.parse(tokenId).toRadixString(16)})');
+  onProgress?.call(
+      'tokenId = $tokenId (0x${BigInt.parse(tokenId).toRadixString(16)})');
 
   // Create lazyMintRequestBody part 1
   // This is the recipe for the NFT, so the contents are more dynamic
@@ -513,14 +551,19 @@ Future<bool> lazyMintExample({
 
   // Package the form inside a signedTypeData message
   TypedMessage mint721TypedMessage = createMint721TypedMessage(
-      collectionChainId: chainId, collectionAddress: collection, lazyMintFormJson: lazyMintFormJson);
+      collectionChainId: chainId,
+      collectionAddress: collection,
+      lazyMintFormJson: lazyMintFormJson);
 
   String signature = '';
   String minterPrivateKey = EnvironmentConfig.kExampleMinterPrivateKey;
-  if (minterPrivateKey.isNotEmpty && minter == EnvironmentConfig.kExampleMinterAddress) {
+  if (minterPrivateKey.isNotEmpty &&
+      minter == EnvironmentConfig.kExampleMinterAddress) {
     onProgress?.call('Calling EthSigUtils to have form signed.');
-    logger.d('We have the private key for minter $minter, signing with EthSigUtils');
-    signature = signTypedDataWithPrivateKey(privateKey: minterPrivateKey, typedMessage: mint721TypedMessage);
+    logger.d(
+        'We have the private key for minter $minter, signing with EthSigUtils');
+    signature = signTypedDataWithPrivateKey(
+        privateKey: minterPrivateKey, typedMessage: mint721TypedMessage);
   } else {
     /// Sign the typed Data Structure of request
     onProgress?.call('Calling WalletConnect API to have form signed.');
@@ -538,17 +581,22 @@ Future<bool> lazyMintExample({
   prettyPrint = encoder.convert(lazyMintFormJson);
   log('lazyMintFormJson\n---\n$prettyPrint\n---');
 
-  String mintStatus = await requestLazyMint(lazyMintFormJson) ?? 'Error: null response from API';
+  String mintStatus = await requestLazyMint(lazyMintFormJson) ??
+      'Error: null response from API';
 
   onProgress?.call('LazyMint completed.  Store link: $nftStoreUri');
   if (basePath.contains('polygon')) {
     // rarible uses the path to indicate a Polygon address from Ethereum
-    logger.d('getNftLazyItemById -> ${basePath}v0.1/nft/items/polygon/$collection:$tokenId/lazy');
+    logger.d(
+        'getNftLazyItemById -> ${basePath}v0.1/nft/items/polygon/$collection:$tokenId/lazy');
   } else {
-    logger.d('getNftLazyItemById -> ${basePath}v0.1/nft/items/$collection:$tokenId/lazy');
+    logger.d(
+        'getNftLazyItemById -> ${basePath}v0.1/nft/items/$collection:$tokenId/lazy');
   }
-  logger.d('$multichainBaseUrl/v0.1/items/$multichainBlockchain:$collection:$tokenId');
-  logger.d('$multichainBaseUrl/v0.1/ownerships/byItem?itemId=$multichainBlockchain:$collection:$tokenId');
+  logger.d(
+      '$multichainBaseUrl/v0.1/items/$multichainBlockchain:$collection:$tokenId');
+  logger.d(
+      '$multichainBaseUrl/v0.1/ownerships/byItem?itemId=$multichainBlockchain:$collection:$tokenId');
 
   validateLazyMint(collection: collection, tokenId: tokenId);
 
@@ -563,10 +611,14 @@ Future<bool> lazyMintExample({
 /// https://multichain.redoc.ly/v0.1#operation/getItemById
 /// TODO:
 /// https://api-staging.rarible.org/v0.1/items/ETHEREUM:0xf565108F208136B1AffD55d19A6236b6b6b9786D:57821959090642343791910250240090585543967286493013648175904625818401167638831
-Future<String> validateLazyMint({required String collection, required String tokenId, String? minter}) async {
+Future<String> validateLazyMint(
+    {required String collection,
+    required String tokenId,
+    String? minter}) async {
   Stopwatch stopwatch = Stopwatch();
 
-  String apiUrl = '$multichainBaseUrl/v0.1/items/$multichainBlockchain:$collection:$tokenId';
+  String apiUrl =
+      '$multichainBaseUrl/v0.1/items/$multichainBlockchain:$collection:$tokenId';
   logger.d('Reading item details back from Rarible.  apiUrl: $apiUrl');
 
   var client = http.Client();
@@ -576,7 +628,8 @@ Future<String> validateLazyMint({required String collection, required String tok
   stopwatch.start();
   final ipAddress = await InternetAddress.lookup(hostname);
   stopwatch.stop();
-  logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
+  logger.i(
+      '${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
   Map<String, dynamic>? meta = null;
 
   stopwatch.reset();
@@ -599,7 +652,8 @@ Future<String> validateLazyMint({required String collection, required String tok
       }
     } else {
       var decodedResponse = jsonDecode(response.body);
-      logger.e('response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
+      logger.e(
+          'response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
       return 'Error: ${response.statusCode}:${response.reasonPhrase} - ${decodedResponse['message']}.';
     }
   } on SocketException {
@@ -625,19 +679,26 @@ Future<String> validateLazyMint({required String collection, required String tok
 ///
 ///  Ethereum API nft-collection-controller:generateNftTokenId
 ///  https://ethereum-api.rarible.org/v0.1/doc#operation/generateNftTokenId
-Future<String> lazyDelete({required String collection, required String tokenId, required String minter}) async {
+Future<String> lazyDelete(
+    {required String collection,
+    required String tokenId,
+    required String minter}) async {
   Stopwatch stopwatch = Stopwatch();
   String apiUrl = '${basePath}v0.1/nft/items/$collection:$tokenId/lazy/delete';
-  logger.d('Requesting deletion of tokenId: $tokenId from collection $collection using endpoint $apiUrl.');
+  logger.d(
+      'Requesting deletion of tokenId: $tokenId from collection $collection using endpoint $apiUrl.');
 
   // We need to prove we are the owner of the NFT by using a personal signed note
   String lazyDeleteRequest = 'I would like to burn my $tokenId item.';
   String personalSignature = '';
 
   String minterPrivateKey = EnvironmentConfig.kExampleMinterPrivateKey;
-  if (minterPrivateKey.isNotEmpty && minter == EnvironmentConfig.kExampleMinterAddress) {
-    logger.d('We have the private key for minter $minter, signing with EthSigUtils');
-    personalSignature = personalSignWithPrivateKey(privateKey: minterPrivateKey, message: lazyDeleteRequest);
+  if (minterPrivateKey.isNotEmpty &&
+      minter == EnvironmentConfig.kExampleMinterAddress) {
+    logger.d(
+        'We have the private key for minter $minter, signing with EthSigUtils');
+    personalSignature = personalSignWithPrivateKey(
+        privateKey: minterPrivateKey, message: lazyDeleteRequest);
   } else {
     // TO-DO wallet connect personal sign
   }
@@ -656,12 +717,14 @@ Future<String> lazyDelete({required String collection, required String tokenId, 
   stopwatch.start();
   final ipAddress = await InternetAddress.lookup(hostname);
   stopwatch.stop();
-  logger.i('${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
+  logger.i(
+      '${stopwatch.elapsedMilliseconds}ms for DNS lookup of hostname $hostname ($ipAddress)');
 
   stopwatch.reset();
   stopwatch.start();
   try {
-    var response = await client.post(Uri.https(apiUri.host.toString(), apiUri.path.toString()),
+    var response = await client.post(
+        Uri.https(apiUri.host.toString(), apiUri.path.toString()),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -673,7 +736,8 @@ Future<String> lazyDelete({required String collection, required String tokenId, 
       logger.d('successful delete. status code: ${response.statusCode}');
     } else {
       var decodedResponse = jsonDecode(response.body);
-      logger.e('response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
+      logger.e(
+          'response: ${response.statusCode}: ${response.reasonPhrase} / ${response.body.toString()}.');
       return 'Error: ${response.statusCode}:${response.reasonPhrase} - ${decodedResponse['message']}.';
     }
   } on SocketException {
@@ -728,7 +792,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         });
       }
     } else {
-      logger.w('WalletConnect - No existing sessions.  User needs to connect to a wallet.');
+      logger.w(
+          'WalletConnect - No existing sessions.  User needs to connect to a wallet.');
     }
 
     walletConnect.registerListeners(
@@ -754,7 +819,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
         // Did the user select a new wallet address?
         if (minter != status.accounts[0]) {
-          logger.d('WalletConnect - onConnect - Selected wallet has changed: minter: $minter <- ${status.accounts[0]}');
+          logger.d(
+              'WalletConnect - onConnect - Selected wallet has changed: minter: $minter <- ${status.accounts[0]}');
           setState(() {
             minter = status.accounts[0];
           });
@@ -792,7 +858,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         }
       },
       onDisconnect: () async {
-        logger.d('WalletConnect - onDisconnect - minter: $minter <- "Please Connect Wallet"');
+        logger.d(
+            'WalletConnect - onDisconnect - minter: $minter <- "Please Connect Wallet"');
         setState(() {
           minter = 'Please Connect Wallet';
           statusMessage = 'WalletConnect session disconnected.';
@@ -814,16 +881,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     // IOS users will need to be prompted which wallet to use.
     if (Platform.isIOS) {
-      List<WalletConnectRegistryListing> listings = await readWalletRegistry(limit: 4);
+      List<WalletConnectRegistryListing> listings =
+          await readWalletRegistry(limit: 4);
 
       await showModalBottomSheet(
         context: context,
         builder: (context) {
-          return showIOSWalletSelectionDialog(context, listings, setWalletListing);
+          return showIOSWalletSelectionDialog(
+              context, listings, setWalletListing);
         },
         isScrollControlled: true,
         isDismissible: false,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
       );
     }
 
@@ -843,23 +913,28 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
             // IOS users have already chosen wallet, so customize the launcher
             if (Platform.isIOS) {
-              uri = walletListing.mobile.universal + '/wc?uri=${Uri.encodeComponent(uri)}';
+              uri = walletListing.mobile.universal +
+                  '/wc?uri=${Uri.encodeComponent(uri)}';
             }
             // Else
             // - Android users will choose their walled from the OS prompt
 
             logger.d('launching uri: $uri');
             try {
-              result = await launchUrl(Uri.parse(uri), mode: LaunchMode.externalApplication);
+              result = await launchUrl(Uri.parse(uri),
+                  mode: LaunchMode.externalApplication);
               if (result == false) {
                 // launch alternative method
-                logger.e('Initial launchuri failed. Fallback launch with forceSafariVC true');
+                logger.e(
+                    'Initial launchuri failed. Fallback launch with forceSafariVC true');
                 result = await launchUrl(Uri.parse(uri));
                 if (result == false) {
                   logger.e('Could not launch $uri');
                 }
               }
               if (result) {
+                print('RESULTED:');
+                print(result.toString());
                 setState(() {
                   statusMessage = 'Launched wallet app, requesting session.';
                 });
@@ -868,12 +943,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               if (e.code == 'ACTIVITY_NOT_FOUND') {
                 logger.w('No wallets available - do nothing!');
                 setState(() {
-                  statusMessage = 'ERROR - No WalletConnect compatible wallets found.';
+                  statusMessage =
+                      'ERROR - No WalletConnect compatible wallets found.';
                 });
                 return;
               }
               logger.e('launch returned $result');
-              logger.e('Unexpected PlatformException error: ${e.message}, code: ${e.code}, details: ${e.details}');
+              logger.e(
+                  'Unexpected PlatformException error: ${e.message}, code: ${e.code}, details: ${e.details}');
             } on Exception catch (e) {
               logger.e('launch returned $result');
               logger.e('url launcher other error e: $e');
@@ -886,10 +963,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       return;
     }
     if (session.accounts.isEmpty) {
-      statusMessage = 'Failed to connect to wallet.  Bridge Overloaded? Could not Connect?';
+      statusMessage =
+          'Failed to connect to wallet.  Bridge Overloaded? Could not Connect?';
 
       // wc:f54c5bca-7712-4187-908c-9a92aa70d8db@1?bridge=https%3A%2F%2Fz.bridge.walletconnect.org&key=155ca05ffc2ab197772a5bd56a5686728f9fcc2b6eee5ffcb6fd07e46337888c
-      logger.e('Failed to connect to wallet.  Bridge Overloaded? Could not Connect?');
+      logger.e(
+          'Failed to connect to wallet.  Bridge Overloaded? Could not Connect?');
     }
   }
 
@@ -912,7 +991,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed && mounted) {
       // If we have a configured connection but the websocket is down try once to reconnect
       if (walletConnect.connected && walletConnect.bridgeConnected == false) {
-        logger.w('$dateString  Wallet connected, but transport is down.  Attempt to recover.');
+        logger.w(
+            '$dateString  Wallet connected, but transport is down.  Attempt to recover.');
         walletConnect.reconnect();
       }
     }
@@ -935,154 +1015,171 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         body: Builder(builder: (context) {
           return Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(mainAxisAlignment: MainAxisAlignment.start, mainAxisSize: MainAxisSize.max, children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: DropdownButton(
-                  dropdownColor: Theme.of(context).cardColor,
-                  value: describeEnum(blockchainFlavor),
-                  items: <String>['ropsten', 'rinkeby', 'ethMainNet', 'mumbai', 'polygonMainNet', 'unknown']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? value) async {
-                    switch (value) {
-                      case 'ropsten':
-                        blockchainFlavor = BlockchainFlavor.ropsten;
-                        break;
-                      case 'rinkeby':
-                        blockchainFlavor = BlockchainFlavor.rinkeby;
-                        break;
-                      case 'ethMainNet':
-                        blockchainFlavor = BlockchainFlavor.ethMainNet;
-                        break;
-                      case 'mumbai':
-                        blockchainFlavor = BlockchainFlavor.mumbai;
-                        break;
-                      case 'polygonMainNet':
-                        blockchainFlavor = BlockchainFlavor.polygonMainNet;
-                        break;
-                    }
-                    await init(blockchain: blockchainFlavor, preserveMinterAddress: true);
-                    setState(() {
-                      // // redundant - shouldn't need these
-                      // blockchainFlavor = blockchainFlavor;
-                      // chainId = chainId;
-                      // basePath = basePath;
-                      // collection = collection;
-                    });
-                  },
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Configured for ${describeEnum(blockchainFlavor)} (chain ID: $chainId) \nBasePath: $basePath'),
-                    Text(
-                      'Collection Address:  \n$collection',
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'Minter Address: \n$minter',
-                      softWrap: false,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    //Text('WalletConnect connected: ${walletConnect.connected}'),
-                    Text('TokenId: $tokenId'),
-                  ],
-                ),
-              ),
-              const Divider(),
-              Expanded(
-                  flex: 1,
-                  child: SingleChildScrollView(
-                    child: Text(
-                      'Status: $statusMessage',
-                    ),
-                  )),
-              const Divider(),
-              ElevatedButton(
-                onPressed: () {
-                  createWalletConnectSession(context);
-                  // statusMessage may be updated
-                  setState(() {});
-                },
-                child: const Text('Connect Wallet'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (walletConnect.connected) {
-                    logger.d('Killing session');
-                    walletConnect.killSession();
-                    setState(() {
-                      statusMessage = 'Wallet Disconnected';
-                    });
-                  }
-                },
-                child: const Text('Disconnect Wallet'),
-              ),
-              Center(
-                child: SizedBox(
-                  width: 300,
-                  child: ElevatedButton(
-                    child: const Text('Mint'),
-                    onPressed: (() async {
-                      logger.d('Button Pressed');
-
-                      if (!walletConnect.connected && EnvironmentConfig.kExampleMinterAddress.isEmpty) {
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: DropdownButton(
+                      dropdownColor: Theme.of(context).cardColor,
+                      value: describeEnum(blockchainFlavor),
+                      items: <String>[
+                        'ropsten',
+                        'rinkeby',
+                        'ethMainNet',
+                        'mumbai',
+                        'polygonMainNet',
+                        'unknown'
+                      ].map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) async {
+                        switch (value) {
+                          case 'ropsten':
+                            blockchainFlavor = BlockchainFlavor.ropsten;
+                            break;
+                          case 'rinkeby':
+                            blockchainFlavor = BlockchainFlavor.rinkeby;
+                            break;
+                          case 'ethMainNet':
+                            blockchainFlavor = BlockchainFlavor.ethMainNet;
+                            break;
+                          case 'mumbai':
+                            blockchainFlavor = BlockchainFlavor.mumbai;
+                            break;
+                          case 'polygonMainNet':
+                            blockchainFlavor = BlockchainFlavor.polygonMainNet;
+                            break;
+                        }
+                        await init(
+                            blockchain: blockchainFlavor,
+                            preserveMinterAddress: true);
                         setState(() {
-                          statusMessage = 'Connect to wallet first!';
+                          // // redundant - shouldn't need these
+                          // blockchainFlavor = blockchainFlavor;
+                          // chainId = chainId;
+                          // basePath = basePath;
+                          // collection = collection;
                         });
-                        return;
+                      },
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                            'Configured for ${describeEnum(blockchainFlavor)} (chain ID: $chainId) \nBasePath: $basePath'),
+                        Text(
+                          'Collection Address:  \n$collection',
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'Minter Address: \n$minter',
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        //Text('WalletConnect connected: ${walletConnect.connected}'),
+                        Text('TokenId: $tokenId'),
+                      ],
+                    ),
+                  ),
+                  const Divider(),
+                  Expanded(
+                      flex: 1,
+                      child: SingleChildScrollView(
+                        child: Text(
+                          'Status: $statusMessage',
+                        ),
+                      )),
+                  const Divider(),
+                  ElevatedButton(
+                    onPressed: () {
+                      createWalletConnectSession(context);
+                      // statusMessage may be updated
+                      setState(() {});
+                    },
+                    child: const Text('Connect Wallet'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (walletConnect.connected) {
+                        logger.d('Killing session');
+                        walletConnect.killSession();
+                        setState(() {
+                          statusMessage = 'Wallet Disconnected';
+                        });
                       }
-                      await lazyMintExample(
-                          context: context,
-                          walletConnector: walletConnect,
-                          onProgress: ((String v) {
-                            logger.d(v);
+                    },
+                    child: const Text('Disconnect Wallet'),
+                  ),
+                  Center(
+                    child: SizedBox(
+                      width: 300,
+                      child: ElevatedButton(
+                        child: const Text('Mint'),
+                        onPressed: (() async {
+                          logger.d('Button Pressed');
+
+                          if (!walletConnect.connected &&
+                              EnvironmentConfig.kExampleMinterAddress.isEmpty) {
                             setState(() {
-                              statusMessage = v;
+                              statusMessage = 'Connect to wallet first!';
                             });
-                          }));
-                    }),
+                            return;
+                          }
+                          await lazyMintExample(
+                              context: context,
+                              walletConnector: walletConnect,
+                              onProgress: ((String v) {
+                                logger.d(v);
+                                setState(() {
+                                  statusMessage = v;
+                                });
+                              }));
+                        }),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Center(
-                child: SizedBox(
-                  width: 300,
-                  child: ElevatedButton(
-                    child: const Text('Delete'),
-                    onPressed: (() async {
-                      logger.d('Button Pressed');
+                  Center(
+                    child: SizedBox(
+                      width: 300,
+                      child: ElevatedButton(
+                        child: const Text('Delete'),
+                        onPressed: (() async {
+                          logger.d('Button Pressed');
 
-                      if (!walletConnect.connected && EnvironmentConfig.kExampleMinterAddress.isEmpty) {
-                        setState(() {
-                          statusMessage = 'Connect to wallet first!';
-                        });
-                        return;
-                      }
-                      await lazyDelete(collection: collection, tokenId: tokenId, minter: minter);
-                    }),
+                          if (!walletConnect.connected &&
+                              EnvironmentConfig.kExampleMinterAddress.isEmpty) {
+                            setState(() {
+                              statusMessage = 'Connect to wallet first!';
+                            });
+                            return;
+                          }
+                          await lazyDelete(
+                              collection: collection,
+                              tokenId: tokenId,
+                              minter: minter);
+                        }),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              TextButton(
-                  onPressed: () {
-                    // TokenId's are big ints... but this is easier
-                    if (nftStoreUri != null) {
-                      logger.d('Launching uri: $nftStoreUri');
-                      launchUrl(Uri.parse(nftStoreUri!));
-                    }
-                  },
-                  child: const Text('Store Link'))
-            ]),
+                  TextButton(
+                      onPressed: () {
+                        // TokenId's are big ints... but this is easier
+                        if (nftStoreUri != null) {
+                          logger.d('Launching uri: $nftStoreUri');
+                          launchUrl(Uri.parse(nftStoreUri!));
+                        }
+                      },
+                      child: const Text('Store Link'))
+                ]),
           );
         }),
       ),
