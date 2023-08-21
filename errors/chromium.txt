@@ -1,0 +1,5 @@
+error:
+    I/chromium(12053): [INFO:CONSOLE(218)] "%c%s color: red; background: yellow; font-size: 24px; ADVERTENCIA", source: https://www.gstatic.com/_/boq-play/_/js/k=boq-play.PlayStoreUi.es.boglnhPysCM.2021.O/am=3u1hfAAMQTNf1QI/d=1/excm=_b,_r,_tp,appdetailsview/ed=1/dg=0/wt=2/ujg=1/rs=AB1caFUTQiTb5FN4QgKyUcmoAz_BvteBKg/m=_b,_tp,_r (218)
+    I/chromium(12053): [INFO:CONSOLE(218)] "%c%s font-size: 18px; Si utilizas esta consola, otras personas podrían hacerse pasar por ti y robarte datos mediante un ataque Self-XSS.
+    I/chromium(12053): No escribas ni pegues ningún código que no entiendas.", source: https://www.gstatic.com/_/boq-play/_/js/k=boq-play.PlayStoreUi.es.boglnhPysCM.2021.O/am=3u1hfAAMQTNf1QI/d=1/excm=_b,_r,_tp,appdetailsview/ed=1/dg=0/wt=2/ujg=1/rs=AB1caFUTQiTb5FN4QgKyUcmoAz_BvteBKg/m=_b,_tp,_r (218)
+    E/flutter (12053): [ERROR:flutter/runtime/dart_vm_initializer.cc(41)] Unhandled Exception: SocketException: Failed host lookup: 'r.bridge.walletconnect.org' (OS Error: No address associated with hostname, errno = 7)

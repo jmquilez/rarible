@@ -16,8 +16,10 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:walletconnect_dart/walletconnect_dart.dart';
 import 'package:walletconnect_secure_storage/walletconnect_secure_storage.dart';
+import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
 
 //* TODO: Find a way for your app to retrieve and handle private keys securely *
 // NOTE: You never want a production private key packaged in your app.
@@ -757,6 +759,13 @@ Future<String> lazyDelete(
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   String statusMessage = 'Initialized';
   String _displayUri = ''; // QR Code for OpenConnect but not used
+  Web3App? web3app;
+  SessionData? session;
+  Uri? uri;
+  String? url;
+  String? account;
+  //TODO, NOTE: different for iOS?
+  final String deepLink = "metamask://wc?uri=";
 
   Future<void> initWalletConnect() async {
     // Wallet Connect Session Storage - So we can persist connections
@@ -764,9 +773,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final session = await sessionStorage.getSession();
 
     // Create a connector
-    walletConnect = WalletConnect(
+    walletConnect =
+        //WalletConnect();
+        WalletConnect(
       // TODO: V1 performance issues - consider rolling your own bridge
-      bridge: 'https://bridge.walletconnect.org',
+      /*bridge:
+          'https://amazon.com',*/ // causing error: 'https://bridge.walletconnect.org',
+      bridge: 'wss://relay.walletconnect.com',
       session: session,
       sessionStorage: sessionStorage,
       clientMeta: PeerMeta(
@@ -869,6 +882,110 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 
+  //TODO: listeners?
+  Future<void> createWalletConnectV2Instance() async {
+    try {
+      print("intializing");
+      web3app = await Web3App.createInstance(
+        relayUrl: 'wss://relay.walletconnect.com',
+        projectId:
+            '68a8e2955516fa9847a032b3e4b0bdf5', //jmquilez28 personal -- //'68a8e2955516fa9847a032b3e4b0bdf5', --> //'2672792a5a3e5caad0ec346948caaed9'
+        metadata: const PairingMetadata(
+          name: "hashmail",
+          description: "your personal web3 mailbox",
+          url: "https://www.hashmail.dev/",
+          icons: ["https://wagmi.sh/icon.png"],
+        ),
+      );
+      print("initialized");
+    } catch (err, stackTrace) {
+      print("catch err $stackTrace");
+    }
+  }
+
+  Uri? formatNativeUrl(String? deepLink, String wcUri) {
+    String safeAppUrl = deepLink ?? "";
+
+    if (deepLink != null && deepLink.isNotEmpty) {
+      if (!safeAppUrl.contains('://')) {
+        safeAppUrl = deepLink.replaceAll('/', '').replaceAll(':', '');
+        safeAppUrl = '$safeAppUrl://';
+      }
+    }
+
+    String encodedWcUrl = Uri.encodeComponent(wcUri);
+    print('Encoded WC URL: $encodedWcUrl');
+
+    return Uri.parse('$safeAppUrl$encodedWcUrl');
+  }
+
+  loginUsingMetamask(BuildContext context, SessionData? session) async {
+    if (web3app == null) await createWalletConnectV2Instance();
+
+    try {
+      //TODO, CHECK: pop-up takes too long to appear
+      ConnectResponse? resp = await web3app?.connect(requiredNamespaces: {
+        'eip155': const RequiredNamespace(
+          chains: ["eip155:80001"], // Mumbai chain
+          methods: [
+            'personal_sign',
+            'eth_sign',
+            'eth_sendTransaction',
+            'eth_signTypedData',
+            'eth_sendTransaction',
+          ], // Requestable Methods
+          events: ["chainChanged", "accountsChanged"], // Requestable Events
+        )
+      });
+      uri = resp?.uri;
+      url = uri.toString();
+      if (deepLink != null) {
+        final link = formatNativeUrl("metamask://wc?uri=", uri.toString());
+        url = link.toString();
+      }
+
+      // NOTE: add
+      /*<queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="wc:" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+        </intent>
+      </queries>**/
+      // to AndroidManifest.xml for "canLaunchUrlString" to be able to return true
+      if (await canLaunchUrlString(url.toString())) {
+        await launchUrlString(url.toString(),
+            mode: LaunchMode
+                .externalApplication /*LaunchMode.externalNonBrowserApplication*/);
+      } else {
+        await launchUrlString(
+            'https://play.google.com/store/apps/details?id=io.metamask',
+            mode: LaunchMode
+                .externalNonBrowserApplication /*LaunchMode.inAppWebView*/);
+      }
+      // TODO, ISSUE: SOMETIMES NOT RETURNING TO APP
+
+      print("returning the wallet response $url");
+      //ses = (await resp?.session.future);
+      session = (await resp?.session.future);
+      print("SessionData ----> ${session.toString()}");
+
+      final String address = NamespaceUtils.getAccount(
+        session?.namespaces.values.first.accounts.first ?? "",
+      );
+
+      // if (resp.session.isCompleted) {
+      print("calling onConnected function :- ${resp?.session.isCompleted}");
+      print("---> $address");
+      account = address;
+      // onConnected != null ? onConnected() : () {};
+      // }
+    } catch (err, s) {
+      print("error connecting wallet -----> $err, $s");
+    }
+  }
+
   Future<void> createWalletConnectSession(BuildContext context) async {
     // Create a new session
     if (walletConnect.connected) {
@@ -898,9 +1015,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
 
     logger.d('createWalletConnectSession');
-    SessionStatus session;
+    //SessionStatus session;
+    SessionData? session;
     try {
-      session = await walletConnect.createSession(
+      loginUsingMetamask(context, session);
+      /*session = await walletConnect.createSession(
           chainId: 1,
           onDisplayUri: (uri) async {
             setState(() {
@@ -955,14 +1074,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               logger.e('launch returned $result');
               logger.e('url launcher other error e: $e');
             }
-          });
+          });*/
     } catch (e) {
       logger.e('Unable to connect - killing the session on our side.');
       statusMessage = 'Unable to connect - killing the session on our side.';
       walletConnect.killSession();
       return;
     }
-    if (session.accounts.isEmpty) {
+    if (account != null /*session.accounts.isEmpty*/) {
       statusMessage =
           'Failed to connect to wallet.  Bridge Overloaded? Could not Connect?';
 
@@ -976,7 +1095,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     // Register observer so we can see app lifecycle changes.
-    WidgetsBinding.instance!.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
     initWalletConnect();
   }
 
@@ -1002,7 +1121,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void dispose() {
     super.dispose();
     // Remove observer for app lifecycle changes.
-    WidgetsBinding.instance!.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
   }
 
   @override
@@ -1162,6 +1281,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                             });
                             return;
                           }
+                          //TODO: check lazy?
                           await lazyDelete(
                               collection: collection,
                               tokenId: tokenId,
