@@ -10,5 +10,5 @@ https://docs.rarible.org/
 Wallet Connect v1
 https://docs.walletconnect.com/
 
-#--> RECENTLY UPDATED TO WALLET CONNECT V2, commited functional update
+# --> RECENTLY UPDATED TO WALLET CONNECT V2, commited functional update
 https://docs.walletconnect.com/2.0/specs
